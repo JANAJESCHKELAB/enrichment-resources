@@ -6,7 +6,8 @@
 
 ## TODO
 ## Add more visualization options that match real life use cases
-## ... maybe add more GO dbs?
+## KEGG is not well-tested yet
+## Add enrichr() universal function
 
 
 # Add arguments
@@ -18,11 +19,14 @@ opt.list = list(
   make_option(c("-j", "--ontology"), type="character", default=NULL,
     help="Input ontology file (such as .gmt from Broad Institute)", metavar="character"
   ),
+  make_option(c("-k", "--gosubcategory"), type="character", default="CC",
+    help="For GO: sub-category (default=%default; can also be BP or MF)", metavar="character"
+  ),
   make_option(c("-o", "--out"), type="character", default=NULL,
     help="Output directory/prefix", metavar="character"
   ),
   make_option(c("-e", "--enrichment"), type="character", default="GO",
-    help="Type of enrichment test (default=%default; only 'GO' supported for now)",
+    help="Type of enrichment test (default=%default; currently supports GO, GSEA)",
     metavar="character"
   ),
   make_option(c("-g", "--genenaming"), type="character", default='SYMBOL',
@@ -108,7 +112,7 @@ readGenes <- function(filename, orgdb, enrichtype='GO', genenametype='SYMBOL') {
     genes.list <- genes.df$value
     names(genes.list) = genes.df$ENTREZID
     genes.list = sort(genes.list, decreasing = TRUE)
-  } else {
+  } else if (enrichtype %in% c('GO', 'KEGG')) {
     #genes.list <- genes.df[["V1"]]
     genes.list <- convertGenenames(genes.df[["V1"]], genenametype, orgdb)
   }
@@ -117,13 +121,12 @@ readGenes <- function(filename, orgdb, enrichtype='GO', genenametype='SYMBOL') {
 
 runEnrichment <- function(
   geneobj, enrichtype='GO', globalgenes=NULL, orgdb=NULL, ontology='CC',
-  file.ontology=NULL,
+  file.ontology=NULL, species=NULL,
   pcutoff=0.01, qcutoff=0.05, filename=NULL) {
   # Enrichment wrapper
   # geneobj is output from previous (either dataframe or named list)
-  # enrichment type should be c('GO', 'GSEA', ...)
+  # enrichment type should be c('GO', 'GSEA', 'KEGG', ...)
   # Some variables are type specific
-  # file.ontology is only needed if the method loads an additional file (such as GSEA)
   # `filename` if you want to save results
   if (enrichtype == 'GO') {
     res.enrichment <- enrichGO(
@@ -135,6 +138,19 @@ runEnrichment <- function(
       pvalueCutoff = pcutoff,
       qvalueCutoff = qcutoff,
       readable = TRUE
+    )
+  } else if (enrichtype == 'KEGG') {
+    if (species == 'human') {
+      kegg.key = 'hsa'
+    } else if (species == 'mouse') {
+      kegg.key = 'mmu'
+    }
+    res.enrichment <- enrichKEGG(
+      gene = geneobj$ENTREZID,
+      organism = kegg.key,
+      keyType = 'kegg',
+      pvalueCutoff = pcutoff,
+      universe = names(globalgenes)
     )
   } else if (enrichtype == 'GSEA') {
     gmt.df <- read.gmt(file.ontology)
@@ -163,14 +179,16 @@ visualizeResults <- function(res.enrich, enrichtype='GO', fileprefix=NULL) {
   # Basic visualization for enrichment results.
   # Write `filename` if you want to save it. Would be either name or prefix
   # depending on the plots generated.
-  if (enrichtype == 'GO') {
-    goplot(res.enrich)
-    if (!is.null(fileprefix)) {
-      ggsave(filename=paste0(fileprefix, 'GOplot.pdf'))
+  if (enrichtype %in% c('GO', 'KEGG')) {
+    if (enrichtype == 'GO') {
+      goplot(res.enrich)
+      if (!is.null(fileprefix)) {
+        ggsave(filename=paste0(fileprefix, enrichtype, 'plot.pdf'))
+      }
     }
     barplot(res.enrich, showCategory=20)
     if (!is.null(fileprefix)) {
-      ggsave(filename=paste0(fileprefix, 'GOBarplot.pdf'))
+      ggsave(filename=paste0(fileprefix, enrichtype, 'Barplot.pdf'))
     }
   } else if (enrichtype == 'GSEA') {
     ridgeplot(res.enrich)
@@ -179,13 +197,13 @@ visualizeResults <- function(res.enrich, enrichtype='GO', fileprefix=NULL) {
     p3 <- gseaplot(res.enrich, geneSetID = 1, title = res.enrich$Description[1])
     plot_list(p1, p2, p3, ncol=1, tag_levels='A')
     if (!is.null(fileprefix)) {
-      ggsave(filename=paste0(fileprefix, 'GSEARidgeplot.pdf'))
+      ggsave(filename=paste0(fileprefix, enrichtype, 'Ridgeplot.pdf'))
     }
   }
   # These are shared between GO/GSEA
   upsetplot(res.enrich)
   if (!is.null(fileprefix)) {
-    ggsave(filename=paste0(fileprefix, 'Upsetplot.pdf'))
+    ggsave(filename=paste0(fileprefix, enrichtype, 'Upsetplot.pdf'))
   }
 }
 
@@ -201,6 +219,8 @@ eres <- runEnrichment(
   globalgenes=geneList,
   file.ontology=opt$ontology,
   orgdb=orgdb,
+  ontology=opt$gosubcategory,
+  species=opt$species,
   pcutoff=opt$pvalue,
   qcutoff=opt$qvalue,
   filename=out.enrich

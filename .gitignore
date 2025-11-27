@@ -1,0 +1,3 @@
+# Ignore data storage directories
+data/
+output/
