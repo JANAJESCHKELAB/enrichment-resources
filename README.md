@@ -1,12 +1,14 @@
 # Introduction
 
-This is an effort to make a somewhat streamlined and
-easy-to-use enrichment script for ACEE.
+This is an effort to gather some easy-to-use gene
+enrichment resources for the entire ACEE.
 `example-*/` contain exemplar gene sets and anticipated
 results to test the script with.
 
+If you find this useful, please help contribute.
 
-## Use
+
+## Using the script
 
 First, prepare your inputs:
 * Input gene list should be a newline-separated
@@ -27,6 +29,20 @@ Use `--help` to check available options.
 
 If you just want to run GO,
 `./enrich-cP.R <input_genelist> <output_directory>` is sufficient.
+
+
+## External resources
+
+* [Gene Ontology](https://geneontology.org/):
+They have a built-in GO analysis software and some visualization
+tools.
+* [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp): 
+if you want to run GSEA you should download one of these gene sets
+first. Need to enter personal information.
+* [PAN-GO](https://functionome.geneontology.org/):
+"all annotated functional characteristics for human protein-coding genes".
+They have some online tools too.
+
 
 
 ## Current features/points of notice
