@@ -169,6 +169,13 @@ runEnrichment <- function(
       by = "fgsea"
     )
   }
+  print("Preview enrichment results:")
+  print(res.enrichment)
+  if (dim(res.enrichment)[1] == 0) {
+    print("WARNING: there were no valid enrichment terms detected! Please review data to make sure there are no critical mistakes.")
+  } else if (sum(is.na(res.enrichment$ID)) / dim(res.enrichment)[1] >= 0.25) {
+    print("WARNING: there are many NA/invalid terms among the enrichment results! Please review data to make sure there are no critical mistakes.")
+  }
   if (!is.null(filename)) {
     write.csv(res.enrichment, filename)
   }
